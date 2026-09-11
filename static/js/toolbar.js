@@ -148,7 +148,18 @@ class AppToolbar {
     this.btnUnderline?.classList.toggle('active', (s.textDecoration || 'none') === 'underline');
 
     // Font Family
-    if (this.selectFontFamily) this.selectFontFamily.value = s.fontFamily || 'Inter';
+    if (this.selectFontFamily && s.fontFamily) {
+      const cleanFont = s.fontFamily.replace(/['"]/g, '').trim();
+      let matched = false;
+      for (const opt of this.selectFontFamily.options) {
+        if (opt.value.toLowerCase() === cleanFont.toLowerCase()) {
+          this.selectFontFamily.value = opt.value;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) this.selectFontFamily.value = 'Inter';
+    }
 
     // Font Size
     if (this.inputFontSize) this.inputFontSize.value = Math.round(s.fontSize || 32);
