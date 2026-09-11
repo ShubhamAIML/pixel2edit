@@ -13,17 +13,24 @@ class ReconstructionService:
         bg = canvas.get("background", "#ffffff")
         elements = design.get("elements", [])
 
-        # Collect used font families
-        used_fonts = set()
-        for el in elements:
-            font = el.get("style", {}).get("fontFamily", "Inter")
-            if font not in {"system-ui", "Arial", "Helvetica", "Georgia", "Times New Roman"}:
-                used_fonts.add(font.replace(" ", "+"))
-
-        google_fonts_link = ""
-        if used_fonts:
-            fonts_query = "&family=".join([f"{f}:wght@300;400;600;700;800;900" for f in used_fonts])
-            google_fonts_link = f'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family={fonts_query}&display=swap" rel="stylesheet">'
+        # Build Google Fonts link with full weights for supported typography
+        google_fonts_link = (
+            '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+            '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+            '  <link href="https://fonts.googleapis.com/css2?'
+            'family=Inter:wght@300;400;500;600;700;800;900&'
+            'family=Montserrat:wght@400;600;700;800;900&'
+            'family=Outfit:wght@400;500;600;700;800&'
+            'family=Poppins:wght@400;600;700;800;900&'
+            'family=Roboto:wght@400;500;700;900&'
+            'family=Open+Sans:wght@400;600;700&'
+            'family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400;1,700&'
+            'family=Oswald:wght@400;500;600;700&'
+            'family=Bebas+Neue&'
+            'family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&'
+            'family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&'
+            'family=Cinzel:wght@500;700;900&display=swap" rel="stylesheet">'
+        )
 
         elements_html = []
         for el in elements:
@@ -69,9 +76,15 @@ class ReconstructionService:
                 "box-sizing: border-box;",
                 "overflow: hidden;",
                 "display: flex;",
-                "align-items: center;",
                 "word-break: break-word;",
             ]
+
+            if el_type == "button":
+                css_rules.append("align-items: center;")
+                css_rules.append("white-space: nowrap;")
+            else:
+                css_rules.append("align-items: flex-start;")
+                css_rules.append("white-space: pre-wrap;")
 
             if padding:
                 css_rules.append(
@@ -96,8 +109,8 @@ class ReconstructionService:
             safe_content = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
 
             elements_html.append(
-                f'    <div id="{el_id}" class="design-element {el_type}-element" style="{style_str}">\n'
-                f'      <span>{safe_content}</span>\n'
+                f'    <div id="{el_id}" class="canvas-element element-type-{el_type}" style="{style_str}">\n'
+                f'      <div class="canvas-element-text">{safe_content}</div>\n'
                 f'    </div>'
             )
 
@@ -146,13 +159,55 @@ class ReconstructionService:
       height: {height}px;
       background: {bg};
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
+      border-radius: 8px;
       overflow: hidden;
     }}
-    @media (max-width: {width + 80}px) {{
+    .canvas-element {{
+      position: absolute;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      word-break: break-word;
+    }}
+    .canvas-element-text {{
+      display: inline-block;
+      width: 100%;
+      text-align: inherit;
+      line-height: inherit;
+      letter-spacing: inherit;
+      font-style: inherit;
+      font-weight: inherit;
+      text-transform: inherit;
+    }}
+    .element-type-button {{
+      align-items: center !important;
+      white-space: nowrap !important;
+    }}
+    .element-type-button .canvas-element-text {{
+      white-space: nowrap !important;
+    }}
+    @media (max-width: {width + 60}px) {{
       .canvas-container {{
         transform-origin: top center;
         transform: scale(calc((100vw - 40px) / {width}));
+        margin-bottom: calc({height}px * (calc((100vw - 40px) / {width}) - 1));
+      }}
+    }}
+    @media print {{
+      body {{
+        background: transparent !important;
+        padding: 0 !important;
+        display: block !important;
+      }}
+      .header-bar {{
+        display: none !important;
+      }}
+      .canvas-container {{
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        transform: none !important;
+        margin: 0 !important;
+        page-break-inside: avoid;
       }}
     }}
   </style>
