@@ -4,7 +4,9 @@ from werkzeug.utils import secure_filename
 
 SAFE_FONT_FAMILIES = {
     "Arial", "Helvetica", "Georgia", "Times New Roman",
-    "Inter", "Roboto", "Poppins", "Montserrat", "Open Sans", "system-ui"
+    "Inter", "Roboto", "Poppins", "Montserrat", "Open Sans", "Outfit",
+    "Playfair Display", "Oswald", "Bebas Neue", "Lora", "Merriweather", "Cinzel",
+    "system-ui"
 }
 
 
@@ -41,12 +43,36 @@ def map_safe_font(font_name: str) -> str:
             return safe
         if safe.lower() in font_clean.lower():
             return safe
-    # Sensible fallback heuristics
+
     lower = font_clean.lower()
+    # Intelligent heuristics for fonts
+    if "bebas" in lower:
+        return "Bebas Neue"
+    if "oswald" in lower:
+        return "Oswald"
+    if "playfair" in lower:
+        return "Playfair Display"
+    if "cinzel" in lower:
+        return "Cinzel"
+    if "lora" in lower:
+        return "Lora"
+    if "merriweather" in lower:
+        return "Merriweather"
+    if "outfit" in lower:
+        return "Outfit"
+    if "montserrat" in lower:
+        return "Montserrat"
+    if "poppins" in lower:
+        return "Poppins"
+    if "roboto" in lower:
+        return "Roboto"
+    if "open" in lower:
+        return "Open Sans"
     if "serif" in lower:
-        return "Georgia"
+        return "Playfair Display"
     if "mono" in lower or "code" in lower:
         return "system-ui"
-    if "display" in lower or "title" in lower:
+    if "display" in lower or "title" in lower or "poster" in lower:
         return "Montserrat"
     return "Inter"
+
