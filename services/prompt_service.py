@@ -10,12 +10,22 @@ CRITICAL INSTRUCTIONS FOR SPATIAL POSITIONING & FONT SIZING:
 1. For EVERY element, detect its PRECISE 2D bounding box as "box_2d": [ymin, xmin, ymax, xmax] on a normalized 0 to 1000 scale (where 0 is top/left and 1000 is bottom/right).
 2. Calculate position: x = round((xmin / 1000) * {img_width}), y = round((ymin / 1000) * {img_height}).
 3. Calculate size: width = round(((xmax - xmin) / 1000) * {img_width}), height = round(((ymax - ymin) / 1000) * {img_height}).
-4. FONT SIZE CALIBRATION (in pixels):
-   - Accurately match the visual glyph height inside the bounding box.
-   - For single-line headings and titles: fontSize should be ~70% to 80% of bounding box height.
-   - For buttons and badges: fontSize should be ~45% to 55% of the button height (accounting for padding).
+4. FONT SIZE & BOX FIT CALIBRATION (in pixels):
+   - Measure actual visible text glyphs so text NEVER overflows or wraps unintentionally.
+   - For single-line headings/titles: fontSize should comfortably fit within the box height (~65% to 75% of height) AND width (fontSize * 0.60 * character_count <= width).
+   - For buttons and badges: fontSize should fit button height (~45% to 50% of height) AND button width.
    - For body text / paragraphs: estimate actual rendered font size (e.g. 14, 16, 18, 20, 24).
-5. TEXT ALIGNMENT:
+5. TYPOGRAPHY & FONT STYLE MATCHING:
+   - Identify "fontFamily" from: "Inter", "Montserrat", "Poppins", "Outfit", "Roboto", "Open Sans", "Playfair Display", "Oswald", "Bebas Neue", "Lora", "Merriweather", "Cinzel", "Georgia", "Arial".
+     * Bold geometric headlines / posters: "Montserrat", "Poppins", "Outfit"
+     * Heavy condensed poster titles: "Oswald", "Bebas Neue"
+     * Editorial / luxury / elegant serifs: "Playfair Display", "Cinzel", "Lora", "Merriweather", "Georgia"
+     * Neutral body & modern UI: "Inter", "Roboto", "Open Sans"
+   - Match "fontWeight": 900 (Black), 800 (ExtraBold), 700 (Bold), 600 (SemiBold), 500 (Medium), 400 (Regular), 300 (Light).
+   - "fontStyle": "italic" if text is italic/slanted, otherwise "normal".
+   - "textTransform": "uppercase" if ALL text is capitalized, "lowercase", "capitalize", or "none".
+   - "letterSpacing": Look closely at letter tracking! Set 1 to 4 for spaced uppercase headers/subtitles, 0 for regular text.
+6. TEXT ALIGNMENT:
    - If the text is centered within the canvas or within its container/button, set "textAlign": "center".
    - If aligned to the left edge, set "textAlign": "left".
    - If aligned to the right edge, set "textAlign": "right".
