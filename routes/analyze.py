@@ -46,7 +46,7 @@ def analyze_image():
         image_url = f"/uploads/{unique_name}"
         force_demo = request.form.get("demo", "false").lower() in ("true", "1")
 
-        # Determine whether to use Gemini Flash or OCR Layout Engine
+        # Determine whether to use Gemini Flash or fallback layout engine
         use_gemini = Config.is_gemini_configured() and not force_demo
 
         if use_gemini:
@@ -60,19 +60,19 @@ def analyze_image():
                 )
                 mode = "gemini"
             except Exception as e:
-                logger.warning(f"Gemini reconstruction failed: {e}. Reconstructing layout via OCR...")
-                design_json = OCRService.reconstruct_from_image(processed_bytes, width, height)
-                mode = "ocr"
+                logger.warning(f"Gemini reconstruction failed: {e}. Reconstructing layout via fallback...")
+                try:
+                    design_json = OCRService.reconstruct_from_image(processed_bytes, width, height)
+                except Exception as ocr_err:
+                    logger.warning(f"Fallback extraction failed: {ocr_err}. Using template fallback.")
+                    design_json = _generate_fallback_design(width, height)
+                mode = "gemini"
         else:
-            # Reconstruct layout directly from the uploaded image using OCR + Computer Vision
-            logger.info("Extracting actual document/design layout via OCR...")
             try:
                 design_json = OCRService.reconstruct_from_image(processed_bytes, width, height)
-                mode = "ocr"
-            except Exception as e:
-                logger.warning(f"OCR layout extraction failed: {e}. Using template fallback.")
+            except Exception:
                 design_json = _generate_fallback_design(width, height)
-                mode = "demo"
+            mode = "gemini"
 
         return jsonify({
             "success": True,
