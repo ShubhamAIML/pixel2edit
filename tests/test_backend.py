@@ -207,3 +207,60 @@ class TestPixel2EditBackend:
 
         # e2 must have been pushed below e1
         assert e2["position"]["y"] >= e1["position"]["y"] + e1["size"]["height"]
+
+    def test_font_family_mapping(self):
+        from utils.file_utils import map_safe_font
+        assert map_safe_font("Playfair Display") == "Playfair Display"
+        assert map_safe_font("playfair") == "Playfair Display"
+        assert map_safe_font("Bebas Neue") == "Bebas Neue"
+        assert map_safe_font("bebas") == "Bebas Neue"
+        assert map_safe_font("Oswald") == "Oswald"
+        assert map_safe_font("Outfit") == "Outfit"
+        assert map_safe_font("Lora") == "Lora"
+        assert map_safe_font("Cinzel") == "Cinzel"
+        assert map_safe_font("Merriweather") == "Merriweather"
+
+    def test_font_size_fit_calibration(self):
+        # A button with long text should NOT get oversized font that exceeds its box width
+        design = {
+            "canvas": {"width": 1080, "height": 1350, "background": "#ffffff"},
+            "elements": [
+                {
+                    "id": "btn_1",
+                    "type": "button",
+                    "content": "RESERVE YOUR ALL-ACCESS VIP PASS NOW",
+                    "position": {"x": 300, "y": 500},
+                    "size": {"width": 300, "height": 80},
+                    "style": {"fontSize": 120}  # Absurdly large font requested
+                }
+            ]
+        }
+        normalized = ValidationService.normalize_design_json(design)
+        btn = normalized["elements"][0]
+        # Font size must be clamped to fit inside the 300px button width
+        assert btn["style"]["fontSize"] < 30.0
+        assert btn["style"]["fontSize"] >= 8.0
+
+    def test_export_html_exact_structure(self, client):
+        design = {
+            "canvas": {"width": 1080, "height": 1350, "background": "#0f172a"},
+            "elements": [
+                {
+                    "id": "btn_shop",
+                    "type": "button",
+                    "content": "SHOP NOW",
+                    "position": {"x": 365, "y": 720},
+                    "size": {"width": 350, "height": 80},
+                    "style": {"fontSize": 26, "color": "#0f172a", "fontFamily": "Inter"}
+                }
+            ]
+        }
+        res = client.post("/api/export/html", json={"design": design})
+        assert res.status_code == 200
+        html = res.data.decode("utf-8")
+        assert "canvas-element" in html
+        assert "canvas-element-text" in html
+        assert "element-type-button" in html
+        assert "@media print" in html
+        assert "fonts.googleapis.com" in html
+
