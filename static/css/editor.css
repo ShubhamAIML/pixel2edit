@@ -509,7 +509,12 @@
 }
 
 .canvas-element.element-type-button {
-  align-items: center;
+  align-items: center !important;
+  white-space: nowrap !important;
+}
+
+.canvas-element.element-type-button .canvas-element-text {
+  white-space: nowrap !important;
 }
 
 .canvas-element:hover {
@@ -524,6 +529,11 @@
   display: inline-block;
   width: 100%;
   text-align: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  font-style: inherit;
+  font-weight: inherit;
+  text-transform: inherit;
   outline: none;
 }
 
