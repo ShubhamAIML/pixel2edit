@@ -125,20 +125,44 @@ class ValidationService:
             except (ValueError, TypeError):
                 font_size = 0.0
 
-            # Calibrate font size relative to bounding box height
-            if el_type == "heading":
-                expected_fs = round(height * 0.72)
-                if font_size <= 10.0 or abs(font_size - expected_fs) > (height * 0.45):
-                    font_size = expected_fs
-            elif el_type == "button":
-                expected_fs = round(height * 0.48)
-                if font_size <= 8.0 or abs(font_size - expected_fs) > (height * 0.40):
-                    font_size = expected_fs
-            elif el_type in ("paragraph", "text"):
-                if font_size <= 8.0:
-                    font_size = max(14.0, min(36.0, round(height * 0.65)))
+            text_transform = str(style.get("textTransform", "none")).lower()
+            if text_transform not in valid_transforms:
+                text_transform = "none"
 
-            font_size = max(8.0, min(300.0, font_size))
+            # Horizontal fit constraint to prevent text overflowing or wrapping awkwardly
+            stripped_content = content.strip()
+            char_len = max(1, len(stripped_content))
+            is_single_line = ("\n" not in content) and (char_len < 80 or height < 120)
+            char_factor = 0.65 if (text_transform == "uppercase" or stripped_content.isupper()) else 0.55
+
+            if el_type == "button":
+                avail_w = max(20.0, width - 28.0)
+                max_fs_w = max(10.0, avail_w / (char_len * char_factor))
+                expected_fs = min(round(height * 0.48), round(max_fs_w))
+                if font_size <= 8.0 or font_size > (max_fs_w * 1.12) or abs(font_size - expected_fs) > (height * 0.38):
+                    font_size = expected_fs
+            elif el_type == "heading":
+                if is_single_line:
+                    avail_w = max(20.0, width * 0.96)
+                    max_fs_w = max(12.0, avail_w / (char_len * char_factor))
+                    expected_fs = min(round(height * 0.72), round(max_fs_w))
+                    if font_size <= 10.0 or font_size > (max_fs_w * 1.15) or abs(font_size - expected_fs) > (height * 0.42):
+                        font_size = expected_fs
+                else:
+                    if font_size <= 10.0:
+                        font_size = max(18.0, min(72.0, round(height * 0.40)))
+            elif el_type in ("paragraph", "text"):
+                if is_single_line:
+                    avail_w = max(20.0, width * 0.96)
+                    max_fs_w = max(10.0, avail_w / (char_len * char_factor))
+                    expected_fs = min(round(height * 0.65), round(max_fs_w))
+                    if font_size <= 8.0 or font_size > (max_fs_w * 1.15):
+                        font_size = max(12.0, min(36.0, expected_fs))
+                else:
+                    if font_size <= 8.0:
+                        font_size = max(14.0, min(32.0, round(height * 0.35)))
+
+            font_size = max(8.0, min(250.0, float(font_size)))
 
             try:
                 font_weight = int(style.get("fontWeight", 400))
@@ -188,10 +212,6 @@ class ValidationService:
                 letter_spacing = max(-5.0, min(30.0, float(style.get("letterSpacing", 0))))
             except (ValueError, TypeError):
                 letter_spacing = 0.0
-
-            text_transform = str(style.get("textTransform", "none")).lower()
-            if text_transform not in valid_transforms:
-                text_transform = "none"
 
             try:
                 opacity = max(0.0, min(1.0, float(style.get("opacity", 1.0))))
