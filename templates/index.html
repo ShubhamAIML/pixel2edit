@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PIXEL2EDIT — Turn Images Into Editable Designs</title>
+  <meta name="description" content="AI-assisted visual design reconstruction engine using Google Gemini Flash. Turn posters, ads, and mockups into live editable canvas designs.">
+
+  <!-- Google Web Fonts for Typography Estimation -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@400;600;700;800;900&family=Outfit:wght@400;500;600;700;800&family=Poppins:wght@400;600;700;800;900&family=Roboto:wght@400;500;700;900&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/editor.css">
+  <!-- html2canvas for client-side PNG export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body class="app-body">
+
+  <!-- Global Application Navigation Bar -->
+  <header class="app-header" id="appHeader">
+    <div class="header-left">
+      <div class="brand-logo" id="brandLogoBtn" title="Back to Landing">
+        <div class="logo-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="m9 9 6 6m0-6-6 6"/>
+          </svg>
+        </div>
+        <span class="logo-text">PIXEL<span>2</span>EDIT</span>
+      </div>
+      <div class="ai-badge {% if gemini_configured %}badge-live{% else %}badge-demo{% endif %}" id="aiStatusBadge" style="cursor: pointer;" title="Click to configure Gemini API Key">
+        <span class="pulse-dot"></span>
+        <span id="aiStatusText">{% if gemini_configured %}Gemini Flash Connected{% else %}Demo Mode (No Key){% endif %}</span>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" id="configureApiKeyBtn" style="font-size: 11.5px; padding: 4px 10px;" title="Set your Google Gemini API key">
+        🔑 Connect Gemini Key
+      </button>
+    </div>
+
+    <!-- Center controls (visible in Editor mode) -->
+    <div class="header-center" id="headerEditorControls" style="display: none;">
+      <!-- Split Mode Toggle -->
+      <div class="view-mode-toggle" id="viewModeToggle">
+        <button type="button" class="mode-btn active" id="btnSideBySide" title="Side-by-Side comparison">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="18" rx="1"/><rect x="13" y="3" width="8" height="18" rx="1"/></svg>
+          Side by Side
+        </button>
+        <button type="button" class="mode-btn" id="btnOverlay" title="Overlay comparison with opacity slider">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="5"/></svg>
+          Overlay
+        </button>
+      </div>
+
+      <!-- Zoom Controls -->
+      <div class="zoom-controls">
+        <button type="button" class="icon-btn" id="zoomOutBtn" title="Zoom Out (Ctrl -)">−</button>
+        <span class="zoom-level" id="zoomLevelDisplay">Fit</span>
+        <button type="button" class="icon-btn" id="zoomInBtn" title="Zoom In (Ctrl +)">+</button>
+        <button type="button" class="zoom-reset-btn" id="zoomFitBtn" title="Fit to Screen">Fit</button>
+      </div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-right">
+      <button type="button" class="btn btn-secondary" id="newDesignBtn" style="display: none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        New Upload
+      </button>
+
+      <!-- Export Dropdown -->
+      <div class="export-dropdown-wrapper" id="exportDropdownWrapper" style="display: none;">
+        <button type="button" class="btn btn-primary" id="exportMainBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Export
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="export-menu" id="exportMenu">
+          <button type="button" class="export-item" id="exportHtmlBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <div>
+              <strong>Standalone HTML & CSS</strong>
+              <small>Download clean, zero-dependency bundle</small>
+            </div>
+          </button>
+          <button type="button" class="export-item" id="exportJsonBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div>
+              <strong>Design JSON</strong>
+              <small>Export raw structured JSON data</small>
+            </div>
+          </button>
+          <button type="button" class="export-item" id="exportPngBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <div>
+              <strong>High-Res PNG Image</strong>
+              <small>Render canvas directly to image</small>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======================================================== -->
+  <!-- STATE 1: LANDING & UPLOAD PAGE                            -->
+  <!-- ======================================================== -->
+  <main class="landing-view" id="landingView">
+    <div class="landing-container">
+      
+      <!-- Hero Section -->
+      <section class="hero-section">
+        <div class="hero-tag">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Google Gemini Flash Multimodal Vision
+        </div>
+        <h1 class="hero-title">
+          Turn Images Into <span class="gradient-text">Editable Designs</span>
+        </h1>
+        <p class="hero-subtitle">
+          Upload a poster, advertisement, social media creative, document or UI screenshot and let AI reconstruct its typography, layout, and visual structure into a live editable canvas.
+        </p>
+      </section>
+
+      <!-- Main Upload Area -->
+      <section class="upload-section">
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept="image/png, image/jpeg, image/jpg, image/webp" class="file-input-hidden">
+          
+          <div class="dropzone-content" id="dropzonePrompt">
+            <div class="upload-icon-circle">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <h3 class="dropzone-title">Upload your design</h3>
+            <p class="dropzone-sub">Drag &amp; drop your image here, or browse files</p>
+            <button type="button" class="btn btn-outline" id="browseFilesBtn">Browse Image</button>
+            <div class="dropzone-formats">Supports PNG • JPG • JPEG • WEBP (Up to 10MB)</div>
+          </div>
+
+          <!-- Uploaded Preview State inside Dropzone -->
+          <div class="dropzone-preview" id="dropzonePreview" style="display: none;">
+            <div class="preview-thumbnail-box">
+              <img id="previewImg" src="" alt="Uploaded design preview">
+            </div>
+            <div class="preview-meta">
+              <div class="file-name" id="previewFileName">filename.png</div>
+              <div class="file-specs" id="previewFileSpecs">1080 × 1350 px • 240 KB</div>
+              <div class="preview-actions">
+                <button type="button" class="btn btn-primary btn-lg" id="reconstructBtn">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                  Reconstruct with AI
+                </button>
+                <button type="button" class="btn btn-ghost" id="removeFileBtn">Change Image</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Technical Disclaimer Box -->
+      <div class="disclaimer-alert">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span>
+          <strong>AI-Assisted Visual Reconstruction:</strong> AI estimates visual layout, geometry, and typography from the raster image. Original source code, exact closed fonts, and layer hierarchies may not be recoverable from a flattened raster file.
+        </span>
+      </div>
+
+      <!-- Quick 1-Click Demo Samples Gallery -->
+      <section class="samples-section">
+        <div class="section-header">
+          <h2 class="section-title">Instant Sample Gallery</h2>
+          <p class="section-sub">Don't have an image ready? Click any sample to test the reconstruction pipeline immediately:</p>
+        </div>
+
+        <div class="samples-grid" id="samplesGrid">
+          <!-- Dynamically populated or static fallbacks -->
+          <div class="sample-card" data-sample-id="sample_summer_sale">
+            <div class="sample-card-thumb">
+              <div class="thumb-poster poster-summer">
+                <span class="badge">LIMITED OFFER</span>
+                <h4>SUMMER MEGA SALE</h4>
+                <p>UP TO 70% OFF</p>
+                <div class="thumb-btn">SHOP NOW</div>
+              </div>
+            </div>
+            <div class="sample-card-info">
+              <span class="sample-category">E-Commerce / Poster</span>
+              <h3 class="sample-title">Summer Mega Sale Poster</h3>
+              <p class="sample-desc">High contrast typography, discount badges, promo code box, and action button.</p>
+              <button type="button" class="sample-load-btn">Load Sample →</button>
+            </div>
+          </div>
+
+          <div class="sample-card" data-sample-id="sample_tech_summit">
+            <div class="sample-card-thumb">
+              <div class="thumb-poster poster-tech">
+                <span class="badge badge-purple">SAN FRANCISCO</span>
+                <h4>NEXT-GEN AI SUMMIT</h4>
+                <p>OCTOBER 24-26, 2025</p>
+                <div class="thumb-btn thumb-btn-purple">RESERVE PASS</div>
+              </div>
+            </div>
+            <div class="sample-card-info">
+              <span class="sample-category">Conference / Tech</span>
+              <h3 class="sample-title">Global AI &amp; Tech Summit</h3>
+              <p class="sample-desc">Futuristic dark theme, event dates, stats pill, and registration call-to-action.</p>
+              <button type="button" class="sample-load-btn">Load Sample →</button>
+            </div>
+          </div>
+
+          <div class="sample-card" data-sample-id="sample_artisan_coffee">
+            <div class="sample-card-thumb">
+              <div class="thumb-poster poster-coffee">
+                <span class="badge badge-amber">EST. 2018</span>
+                <h4>THE ARTISAN BREW</h4>
+                <p>SINGLE ORIGIN ROASTERY</p>
+                <div class="thumb-btn thumb-btn-amber">VIEW MENU</div>
+              </div>
+            </div>
+            <div class="sample-card-info">
+              <span class="sample-category">Cafe / Hospitality</span>
+              <h3 class="sample-title">Artisan Coffee House</h3>
+              <p class="sample-desc">Warm serif typography, menu highlights, and artisanal branding elements.</p>
+              <button type="button" class="sample-load-btn">Load Sample →</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- STATE 2: FULL EDITOR INTERFACE                            -->
+  <!-- ======================================================== -->
+  <div class="editor-view" id="editorView" style="display: none;">
+    
+    <!-- Top Formatting Toolbar -->
+    <section class="editor-toolbar" id="editorToolbar">
+      <!-- Undo / Redo -->
+      <div class="toolbar-group">
+        <button type="button" class="tb-btn" id="tbUndo" title="Undo (Ctrl+Z)" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        </button>
+        <button type="button" class="tb-btn" id="tbRedo" title="Redo (Ctrl+Y / Ctrl+Shift+Z)" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+        </button>
+      </div>
+
+      <div class="tb-divider"></div>
+
+      <!-- Text Style Controls: B, I, U -->
+      <div class="toolbar-group">
+        <button type="button" class="tb-btn tb-text-btn" id="tbBold" title="Bold (Ctrl+B)">
+          <strong>B</strong>
+        </button>
+        <button type="button" class="tb-btn tb-text-btn" id="tbItalic" title="Italic (Ctrl+I)">
+          <em>I</em>
+        </button>
+        <button type="button" class="tb-btn tb-text-btn" id="tbUnderline" title="Underline (Ctrl+U)">
+          <u>U</u>
+        </button>
+      </div>
+
+      <div class="tb-divider"></div>
+
+      <!-- Font Family Dropdown -->
+      <div class="toolbar-group">
+        <select class="tb-select" id="tbFontFamily" title="Font Family">
+          <option value="Inter">Inter</option>
+          <option value="Montserrat">Montserrat</option>
+          <option value="Poppins">Poppins</option>
+          <option value="Roboto">Roboto</option>
+          <option value="Open Sans">Open Sans</option>
+          <option value="Arial">Arial</option>
+          <option value="Helvetica">Helvetica</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="system-ui">system-ui</option>
+        </select>
+      </div>
+
+      <!-- Font Size Stepper -->
+      <div class="toolbar-group">
+        <div class="tb-stepper" title="Font Size">
+          <button type="button" class="step-btn" id="tbFontSizeDec">−</button>
+          <input type="number" id="tbFontSize" value="32" min="8" max="250" class="step-input">
+          <button type="button" class="step-btn" id="tbFontSizeInc">+</button>
+        </div>
+      </div>
+
+      <div class="tb-divider"></div>
+
+      <!-- Text Color Picker -->
+      <div class="toolbar-group">
+        <div class="tb-color-wrapper" title="Text Color">
+          <span class="color-label">A</span>
+          <input type="color" id="tbTextColor" value="#111827" class="color-swatch-input">
+          <span class="color-indicator-bar" id="tbTextColorBar"></span>
+        </div>
+      </div>
+
+      <!-- Background Color Picker -->
+      <div class="toolbar-group">
+        <div class="tb-color-wrapper" title="Element / Fill Color">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>
+          <input type="color" id="tbBgColor" value="#38bdf8" class="color-swatch-input">
+          <span class="color-indicator-bar" id="tbBgColorBar"></span>
+        </div>
+      </div>
+
+      <div class="tb-divider"></div>
+
+      <!-- Alignment Buttons -->
+      <div class="toolbar-group">
+        <button type="button" class="tb-btn" id="tbAlignLeft" title="Align Left">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="6" x2="3" y2="6"/><line x1="15" y1="12" x2="3" y2="12"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+        </button>
+        <button type="button" class="tb-btn" id="tbAlignCenter" title="Align Center">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="6" x2="3" y2="6"/><line x1="17" y1="12" x2="7" y2="12"/><line x1="19" y1="18" x2="5" y2="18"/></svg>
+        </button>
+        <button type="button" class="tb-btn" id="tbAlignRight" title="Align Right">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="12" x2="9" y2="12"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="tb-divider"></div>
+
+      <!-- Text Transform -->
+      <div class="toolbar-group">
+        <select class="tb-select tb-select-sm" id="tbTextTransform" title="Text Transform">
+          <option value="none">Aa (None)</option>
+          <option value="uppercase">AA (UPPER)</option>
+          <option value="lowercase">aa (lower)</option>
+          <option value="capitalize">Aa (Capitalize)</option>
+        </select>
+      </div>
+
+      <!-- Spacing controls (Line Height & Letter Spacing) -->
+      <div class="toolbar-group">
+        <div class="tb-input-field" title="Letter Spacing (px)">
+          <span class="tb-input-label">↔</span>
+          <input type="number" id="tbLetterSpacing" value="0" min="-5" max="30" step="0.5" class="tb-mini-input">
+        </div>
+      </div>
+
+      <div class="tb-divider"></div>
+
+      <!-- AI Edit Action -->
+      <div class="toolbar-group">
+        <button type="button" class="tb-btn tb-ai-btn" id="openAiEditBtn" title="Edit selected element using Natural Language AI">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
+          <span>Edit with AI</span>
+        </button>
+      </div>
+
+      <!-- Delete Action -->
+      <div class="toolbar-group" style="margin-left: auto;">
+        <button type="button" class="tb-btn tb-danger-btn" id="tbDeleteElement" title="Delete selected element (Del / Backspace)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- Mobile view toggle bar (visible on narrow screens) -->
+    <div class="mobile-pane-toggle" id="mobilePaneToggle">
+      <button type="button" class="mobile-toggle-btn active" id="btnShowOriginal">Original Image</button>
+      <button type="button" class="mobile-toggle-btn" id="btnShowEditable">Editable Canvas</button>
+    </div>
+
+    <!-- Overlay Opacity Slider Bar (visible only in Overlay Mode) -->
+    <div class="overlay-slider-bar" id="overlaySliderBar" style="display: none;">
+      <div class="slider-label">Original Image Opacity:</div>
+      <input type="range" id="overlayOpacitySlider" min="0" max="100" value="50" class="overlay-range">
+      <span class="slider-val" id="overlayOpacityValue">50%</span>
+    </div>
+
+    <!-- Main Workspace Split-Area -->
+    <section class="editor-workspace" id="editorWorkspace">
+      
+      <!-- LEFT PANE: ORIGINAL REFERENCE IMAGE -->
+      <div class="workspace-pane pane-original" id="paneOriginal">
+        <div class="pane-header">
+          <div class="pane-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            ORIGINAL REFERENCE IMAGE
+          </div>
+          <div class="pane-info" id="originalDimensionsLabel">1080 × 1350 px</div>
+        </div>
+
+        <div class="pane-content" id="originalScrollArea">
+          <div class="canvas-viewport" id="originalViewport">
+            <div class="original-image-container" id="originalImageContainer">
+              <img id="originalReferenceImage" src="" alt="Original reference design">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT PANE: EDITABLE RECONSTRUCTED DESIGN CANVAS -->
+      <div class="workspace-pane pane-editable" id="paneEditable">
+        <div class="pane-header">
+          <div class="pane-badge badge-accent">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            EDITABLE RECONSTRUCTION
+          </div>
+          <div class="pane-actions">
+            <span class="pane-info" id="editableDimensionsLabel">1080 × 1350 px</span>
+          </div>
+        </div>
+
+        <div class="pane-content" id="editableScrollArea">
+          <div class="canvas-viewport" id="editableViewport">
+            
+            <!-- Fixed Coordinate Design Canvas -->
+            <div class="design-canvas" id="designCanvas">
+              <!-- Overlay Reference Image layer (used when in Overlay Mode) -->
+              <div class="canvas-overlay-image" id="canvasOverlayImage" style="display: none;">
+                <img id="overlayImageElement" src="" alt="Overlay alignment reference">
+              </div>
+
+              <!-- Reconstructed DOM elements will be injected here -->
+              <div class="canvas-elements-layer" id="canvasElementsLayer"></div>
+
+              <!-- Interactive Selection Bounding Box with 8 Resize Handles -->
+              <div class="selection-overlay" id="selectionOverlay" style="display: none;">
+                <div class="selection-border"></div>
+                <div class="selection-type-tag" id="selectionTag">TEXT</div>
+                <div class="handle handle-nw" data-handle="nw"></div>
+                <div class="handle handle-n" data-handle="n"></div>
+                <div class="handle handle-ne" data-handle="ne"></div>
+                <div class="handle handle-e" data-handle="e"></div>
+                <div class="handle handle-se" data-handle="se"></div>
+                <div class="handle handle-s" data-handle="s"></div>
+                <div class="handle handle-sw" data-handle="sw"></div>
+                <div class="handle handle-w" data-handle="w"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT SIDE: PROPERTY INSPECTOR PANEL -->
+      <aside class="inspector-panel" id="inspectorPanel">
+        <div class="inspector-header">
+          <h3 class="inspector-title">Properties</h3>
+          <span class="inspector-element-type" id="inspElementType">None Selected</span>
+        </div>
+
+        <div class="inspector-content" id="inspectorContent">
+          
+          <!-- Empty selection state -->
+          <div class="inspector-empty" id="inspectorEmpty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+            <p>Click any element on the canvas to inspect and edit its properties.</p>
+          </div>
+
+          <!-- Active Element Property Form -->
+          <div class="inspector-form" id="inspectorForm" style="display: none;">
+            
+            <!-- Content Section (for text / button) -->
+            <div class="insp-section" id="inspContentSection">
+              <label class="insp-label">Text Content</label>
+              <textarea id="inspContentInput" class="insp-textarea" rows="2"></textarea>
+            </div>
+
+            <!-- Position & Size Section -->
+            <div class="insp-section">
+              <label class="insp-label">Geometry</label>
+              <div class="insp-grid-2">
+                <div class="insp-field">
+                  <span class="field-prefix">X</span>
+                  <input type="number" id="inspPosX" class="insp-input">
+                </div>
+                <div class="insp-field">
+                  <span class="field-prefix">Y</span>
+                  <input type="number" id="inspPosY" class="insp-input">
+                </div>
+              </div>
+              <div class="insp-grid-2" style="margin-top: 6px;">
+                <div class="insp-field">
+                  <span class="field-prefix">W</span>
+                  <input type="number" id="inspWidth" class="insp-input" min="10">
+                </div>
+                <div class="insp-field">
+                  <span class="field-prefix">H</span>
+                  <input type="number" id="inspHeight" class="insp-input" min="10">
+                </div>
+              </div>
+            </div>
+
+            <!-- Typography Section -->
+            <div class="insp-section" id="inspTypographySection">
+              <label class="insp-label">Typography</label>
+              <div class="insp-field" style="margin-bottom: 6px;">
+                <select id="inspFontFamily" class="insp-select">
+                  <option value="Inter">Inter</option>
+                  <option value="Montserrat">Montserrat</option>
+                  <option value="Poppins">Poppins</option>
+                  <option value="Roboto">Roboto</option>
+                  <option value="Open Sans">Open Sans</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Helvetica">Helvetica</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Times New Roman">Times New Roman</option>
+                  <option value="system-ui">system-ui</option>
+                </select>
+              </div>
+              <div class="insp-grid-2">
+                <div class="insp-field">
+                  <span class="field-prefix">Size</span>
+                  <input type="number" id="inspFontSize" class="insp-input" min="8" max="250">
+                </div>
+                <div class="insp-field">
+                  <select id="inspFontWeight" class="insp-select">
+                    <option value="300">300 Light</option>
+                    <option value="400">400 Regular</option>
+                    <option value="500">500 Medium</option>
+                    <option value="600">600 SemiBold</option>
+                    <option value="700">700 Bold</option>
+                    <option value="800">800 ExtraBold</option>
+                    <option value="900">900 Black</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Appearance Section -->
+            <div class="insp-section">
+              <label class="insp-label">Colors &amp; Fill</label>
+              <div class="insp-color-row">
+                <span class="row-label">Text Color</span>
+                <div class="color-control">
+                  <input type="color" id="inspColorPicker" class="mini-color">
+                  <input type="text" id="inspColorHex" class="insp-hex-input" maxlength="9">
+                </div>
+              </div>
+              <div class="insp-color-row" style="margin-top: 6px;">
+                <span class="row-label">Background</span>
+                <div class="color-control">
+                  <input type="color" id="inspBgPicker" class="mini-color">
+                  <input type="text" id="inspBgHex" class="insp-hex-input" maxlength="9">
+                </div>
+              </div>
+            </div>
+
+            <!-- Borders & Radius -->
+            <div class="insp-section">
+              <label class="insp-label">Corner Radius &amp; Border</label>
+              <div class="insp-grid-2">
+                <div class="insp-field" title="Border Radius (px)">
+                  <span class="field-prefix">Rad</span>
+                  <input type="number" id="inspBorderRadius" class="insp-input" min="0" max="200">
+                </div>
+                <div class="insp-field" title="Border Width (px)">
+                  <span class="field-prefix">Bdr</span>
+                  <input type="number" id="inspBorderWidth" class="insp-input" min="0" max="50">
+                </div>
+              </div>
+            </div>
+
+            <!-- Layout: Padding & Margin -->
+            <div class="insp-section">
+              <label class="insp-label">Padding (T / R / B / L)</label>
+              <div class="insp-grid-4">
+                <input type="number" id="inspPadTop" class="insp-input insp-micro" placeholder="T">
+                <input type="number" id="inspPadRight" class="insp-input insp-micro" placeholder="R">
+                <input type="number" id="inspPadBottom" class="insp-input insp-micro" placeholder="B">
+                <input type="number" id="inspPadLeft" class="insp-input insp-micro" placeholder="L">
+              </div>
+            </div>
+
+            <!-- Transform & Opacity -->
+            <div class="insp-section">
+              <label class="insp-label">Transform</label>
+              <div class="insp-grid-2">
+                <div class="insp-field" title="Rotation (Degrees)">
+                  <span class="field-prefix">Rot°</span>
+                  <input type="number" id="inspRotation" class="insp-input" min="-360" max="360">
+                </div>
+                <div class="insp-field" title="Opacity (0 - 100%)">
+                  <span class="field-prefix">Op%</span>
+                  <input type="number" id="inspOpacity" class="insp-input" min="0" max="100">
+                </div>
+              </div>
+            </div>
+
+            <!-- Layer Ordering -->
+            <div class="insp-section">
+              <label class="insp-label">Layer Hierarchy</label>
+              <div class="layer-buttons">
+                <button type="button" class="btn btn-sm btn-outline" id="inspBringFront" title="Bring to Front">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                  Bring to Front
+                </button>
+                <button type="button" class="btn btn-sm btn-outline" id="inspSendBack" title="Send to Back">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 12 17 2 12"/><polyline points="22 7 12 12 2 7"/><polygon points="12 22 2 17 12 12 22 17 12 22"/></svg>
+                  Send to Back
+                </button>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="insp-section" style="border-bottom: none;">
+              <button type="button" class="btn btn-danger btn-block" id="inspDeleteBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                Delete Element
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      </aside>
+
+    </section>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ANIMATED AI PROCESSING STATE                      -->
+  <!-- ======================================================== -->
+  <div class="modal-overlay" id="processingModal" style="display: none;">
+    <div class="processing-card">
+      <div class="processing-glow-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-slow">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        </svg>
+      </div>
+
+      <h3 class="processing-title">✨ Reconstructing your design</h3>
+      <p class="processing-subtitle">Google Gemini Flash is analyzing layout, typography and geometry...</p>
+
+      <ul class="progress-steps" id="progressStepsList">
+        <li class="step-item step-completed" id="step1">
+          <span class="step-icon">✓</span>
+          <span class="step-text">Image uploaded &amp; validated</span>
+        </li>
+        <li class="step-item step-active" id="step2">
+          <span class="step-icon">●</span>
+          <span class="step-text">Analyzing visual layout &amp; elements</span>
+        </li>
+        <li class="step-item" id="step3">
+          <span class="step-icon">○</span>
+          <span class="step-text">Detecting typography &amp; safe fonts</span>
+        </li>
+        <li class="step-item" id="step4">
+          <span class="step-icon">○</span>
+          <span class="step-text">Mapping coordinates &amp; colors</span>
+        </li>
+        <li class="step-item" id="step5">
+          <span class="step-icon">○</span>
+          <span class="step-text">Building editable canvas</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: "EDIT WITH AI" NATURAL LANGUAGE MODAL             -->
+  <!-- ======================================================== -->
+  <div class="modal-overlay" id="aiEditModal" style="display: none;">
+    <div class="ai-edit-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="ai-spark-icon">✨</div>
+          <h3>Edit with AI</h3>
+        </div>
+        <button type="button" class="close-btn" id="closeAiEditModalBtn">&times;</button>
+      </div>
+
+      <p class="ai-modal-desc">
+        Tell Gemini what to change. It will generate a minimal patch and update the design state without redesigning the entire composition.
+      </p>
+
+      <div class="target-element-info" id="aiTargetElementInfo">
+        Target: <strong id="aiTargetElementLabel">Selected Headline</strong>
+      </div>
+
+      <textarea id="aiEditInput" class="ai-prompt-textarea" rows="3" placeholder="e.g. Make the headline bigger, bold, and change it to neon blue..."></textarea>
+
+      <!-- Quick Suggestion Pills -->
+      <div class="suggestion-pills">
+        <button type="button" class="pill" data-prompt="Make the headline bigger and neon blue">"Make it bigger and blue"</button>
+        <button type="button" class="pill" data-prompt="Change color to gold and make it bold">"Gold and bold"</button>
+        <button type="button" class="pill" data-prompt="Center align and convert text to uppercase">"Center &amp; uppercase"</button>
+        <button type="button" class="pill" data-prompt="Change color to white and reduce font size">"Smaller &amp; white"</button>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="cancelAiEditBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="submitAiEditBtn">
+          <span id="aiEditBtnSpinner" style="display: none;" class="mini-spinner"></span>
+          <span id="aiEditBtnText">Apply with AI</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: CONFIGURE GEMINI API KEY                          -->
+  <!-- ======================================================== -->
+  <div class="modal-overlay" id="apiKeyModal" style="display: none;">
+    <div class="ai-edit-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="ai-spark-icon">🔑</div>
+          <h3>Connect Gemini Flash API</h3>
+        </div>
+        <button type="button" class="close-btn" id="closeApiKeyModalBtn">&times;</button>
+      </div>
+
+      <p class="ai-modal-desc">
+        To reconstruct your uploaded images using real multimodal AI vision (rather than demo mockups), enter your Google Gemini API key.
+        Get a key for free from <a href="https://aistudio.google.com/" target="_blank" style="color: #38bdf8; text-decoration: underline;">Google AI Studio</a>.
+      </p>
+
+      <div class="insp-section" style="border: none; padding: 0; margin: 0;">
+        <label class="insp-label">GEMINI_API_KEY</label>
+        <div class="insp-field" style="height: 42px; padding: 0 12px; background: var(--bg-main);">
+          <input type="password" id="geminiApiKeyInput" class="insp-input" placeholder="AIzaSy..." style="font-size: 14px;">
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="cancelApiKeyBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveApiKeyBtn">
+          Save &amp; Activate
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Application Scripts -->
+  <script src="/static/js/editor.js"></script>
+  <script src="/static/js/toolbar.js"></script>
+  <script src="/static/js/inspector.js"></script>
+  <script src="/static/js/ai_edit.js"></script>
+  <script src="/static/js/export.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
