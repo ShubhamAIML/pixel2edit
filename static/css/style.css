@@ -479,6 +479,9 @@ body.app-body {
   padding: 20px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
+  cursor: default;
+  position: relative;
+  z-index: 10;
 }
 
 .preview-thumbnail-box {
