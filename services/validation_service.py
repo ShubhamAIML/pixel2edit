@@ -81,35 +81,64 @@ class ValidationService:
 
             content = str(el.get("content", ""))
 
-            # Position
-            pos = el.get("position", {})
-            try:
-                pos_x = float(pos.get("x", 0))
-            except (ValueError, TypeError):
-                pos_x = 0.0
-            try:
-                pos_y = float(pos.get("y", 0))
-            except (ValueError, TypeError):
-                pos_y = 0.0
+            # Position & Size from box_2d if available, else from position/size
+            box_2d = el.get("box_2d")
+            has_box = False
+            if isinstance(box_2d, (list, tuple)) and len(box_2d) == 4:
+                try:
+                    ymin, xmin, ymax, xmax = [float(v) for v in box_2d]
+                    scale = 1000.0 if max(ymin, xmin, ymax, xmax) > 1.0 else 1.0
+                    pos_x = round((xmin / scale) * canvas_w)
+                    pos_y = round((ymin / scale) * canvas_h)
+                    width = max(10.0, round(((xmax - xmin) / scale) * canvas_w))
+                    height = max(10.0, round(((ymax - ymin) / scale) * canvas_h))
+                    has_box = True
+                except Exception:
+                    has_box = False
 
-            # Size
-            size = el.get("size", {})
-            try:
-                width = max(10.0, float(size.get("width", 200)))
-            except (ValueError, TypeError):
-                width = 200.0
-            try:
-                height = max(10.0, float(size.get("height", 60)))
-            except (ValueError, TypeError):
-                height = 60.0
+            if not has_box:
+                pos = el.get("position", {})
+                try:
+                    pos_x = float(pos.get("x", 0))
+                except (ValueError, TypeError):
+                    pos_x = 0.0
+                try:
+                    pos_y = float(pos.get("y", 0))
+                except (ValueError, TypeError):
+                    pos_y = 0.0
+
+                size = el.get("size", {})
+                try:
+                    width = max(10.0, float(size.get("width", 200)))
+                except (ValueError, TypeError):
+                    width = 200.0
+                try:
+                    height = max(10.0, float(size.get("height", 60)))
+                except (ValueError, TypeError):
+                    height = 60.0
 
             # Style
             style = el.get("style", {})
             font_family = map_safe_font(style.get("fontFamily", "Inter"))
             try:
-                font_size = max(8.0, min(300.0, float(style.get("fontSize", 28))))
+                font_size = float(style.get("fontSize", 0))
             except (ValueError, TypeError):
-                font_size = 28.0
+                font_size = 0.0
+
+            # Calibrate font size relative to bounding box height
+            if el_type == "heading":
+                expected_fs = round(height * 0.72)
+                if font_size <= 10.0 or abs(font_size - expected_fs) > (height * 0.45):
+                    font_size = expected_fs
+            elif el_type == "button":
+                expected_fs = round(height * 0.48)
+                if font_size <= 8.0 or abs(font_size - expected_fs) > (height * 0.40):
+                    font_size = expected_fs
+            elif el_type in ("paragraph", "text"):
+                if font_size <= 8.0:
+                    font_size = max(14.0, min(36.0, round(height * 0.65)))
+
+            font_size = max(8.0, min(300.0, font_size))
 
             try:
                 font_weight = int(style.get("fontWeight", 400))
@@ -142,6 +171,13 @@ class ValidationService:
             text_align = str(style.get("textAlign", "left")).lower()
             if text_align not in valid_aligns:
                 text_align = "left"
+
+            # Auto-detect centered layout: if element center is near canvas center
+            if text_align == "left" and el_type in ("heading", "button"):
+                box_center_x = pos_x + (width / 2.0)
+                canvas_center_x = canvas_w / 2.0
+                if abs(box_center_x - canvas_center_x) < (canvas_w * 0.07):
+                    text_align = "center"
 
             try:
                 line_height = max(0.8, min(3.0, float(style.get("lineHeight", 1.2))))
