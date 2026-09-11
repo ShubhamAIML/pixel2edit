@@ -200,6 +200,13 @@ class DesignEditor {
     node.style.opacity = style.opacity !== undefined ? style.opacity : 1.0;
     node.style.zIndex = zIndex || 1;
 
+    // Button specific whitespace
+    if (el.type === 'button') {
+      node.style.whiteSpace = 'nowrap';
+    } else {
+      node.style.whiteSpace = 'pre-wrap';
+    }
+
     // Padding
     if (layout?.padding) {
       const p = layout.padding;
