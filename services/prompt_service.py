@@ -1,50 +1,29 @@
 class PromptService:
     @staticmethod
     def get_reconstruction_prompt(img_width: int, img_height: int) -> str:
-        return f"""You are an AI visual design reconstruction engine.
+        return f"""You are an expert AI visual design reconstruction engine.
 
-Analyze the supplied image and convert its visual structure into a structured editable design representation.
-The image dimensions are {img_width}x{img_height} pixels. All x, y, width, and height coordinates MUST be in this exact coordinate space.
+Analyze the supplied image and convert its visual structure into a precise editable design representation.
+The image dimensions are {img_width}x{img_height} pixels.
 
-Do not describe the image in prose.
-Identify every meaningful design element.
+CRITICAL INSTRUCTIONS FOR SPATIAL POSITIONING & FONT SIZING:
+1. For EVERY element, detect its PRECISE 2D bounding box as "box_2d": [ymin, xmin, ymax, xmax] on a normalized 0 to 1000 scale (where 0 is top/left and 1000 is bottom/right).
+2. Calculate position: x = round((xmin / 1000) * {img_width}), y = round((ymin / 1000) * {img_height}).
+3. Calculate size: width = round(((xmax - xmin) / 1000) * {img_width}), height = round(((ymax - ymin) / 1000) * {img_height}).
+4. FONT SIZE CALIBRATION (in pixels):
+   - Accurately match the visual glyph height inside the bounding box.
+   - For single-line headings and titles: fontSize should be ~70% to 80% of bounding box height.
+   - For buttons and badges: fontSize should be ~45% to 55% of the button height (accounting for padding).
+   - For body text / paragraphs: estimate actual rendered font size (e.g. 14, 16, 18, 20, 24).
+5. TEXT ALIGNMENT:
+   - If the text is centered within the canvas or within its container/button, set "textAlign": "center".
+   - If aligned to the left edge, set "textAlign": "left".
+   - If aligned to the right edge, set "textAlign": "right".
 
-For every text element determine:
-1. Exact visible text
-2. Element type ("heading", "paragraph", "text", or "button")
-3. Bounding box
-4. X position (left edge in pixels)
-5. Y position (top edge in pixels)
-6. Width (in pixels)
-7. Height (in pixels)
-8. Approximate font family (Choose from: "Arial", "Helvetica", "Georgia", "Times New Roman", "Inter", "Roboto", "Poppins", "Montserrat", "Open Sans", "system-ui")
-9. Approximate font size (in pixels, e.g. 14, 24, 48, 72)
-10. Font weight (100, 300, 400, 600, 700, 800, 900)
-11. Font style ("normal" or "italic")
-12. Text color (hex code e.g. "#FFFFFF", "#1E293B")
-13. Text alignment ("left", "center", "right", or "justify")
-14. Line height (e.g. 1.1, 1.2, 1.4)
-15. Letter spacing (in pixels, e.g. 0, 1, 2)
-16. Text transform ("none", "uppercase", "lowercase", or "capitalize")
-17. Opacity (0.0 to 1.0)
-18. Rotation (degrees, 0 if upright)
-
-Identify non-text elements such as:
-- background (canvas background or background rectangle)
-- button (with background color, border radius, padding, and text content)
-- rectangle (badges, cards, accent containers)
-- circle (decorative icons, avatars)
-
-Estimate:
-- padding (top, right, bottom, left)
-- margins (top, right, bottom, left)
-- hierarchy and stacking order (zIndex)
-
-Use pixel coordinates based on the original image dimensions ({img_width}x{img_height}).
-The objective is visual reconstruction.
-Do not claim that you know the original HTML/CSS.
-Do not invent hidden elements.
-If a property cannot be determined exactly from the raster image, provide a reasonable estimate.
+Identify every meaningful design element:
+- text elements: "heading", "paragraph", "text"
+- UI components: "button" (with background color, border radius, padding, text content)
+- shapes: "rectangle" (background cards, badges, banners), "circle" (icons, avatars)
 
 Return ONLY valid JSON matching this schema:
 {{
@@ -57,7 +36,8 @@ Return ONLY valid JSON matching this schema:
     {{
       "id": "element_001",
       "type": "heading|paragraph|text|button|rectangle|circle",
-      "content": "Text here",
+      "content": "Exact visible text here",
+      "box_2d": [ymin, xmin, ymax, xmax],
       "position": {{ "x": 0, "y": 0 }},
       "size": {{ "width": 100, "height": 50 }},
       "style": {{
@@ -71,7 +51,7 @@ Return ONLY valid JSON matching this schema:
         "borderRadius": 0,
         "borderWidth": 0,
         "borderColor": "transparent",
-        "textAlign": "left",
+        "textAlign": "center",
         "lineHeight": 1.2,
         "letterSpacing": 0,
         "textTransform": "none",
