@@ -88,5 +88,5 @@ if __name__ == "__main__":
         host=host,
         port=Config.PORT,
         debug=Config.DEBUG,
-        use_reloader=False
+        use_reloader=Config.DEBUG
     )
