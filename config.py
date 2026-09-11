@@ -15,10 +15,10 @@ load_dotenv(ENV_FILE, override=True)
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "pixel2edit-secure-key-2025")
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
-    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash").strip()
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash").strip()
     MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", 10))
     MAX_CONTENT_LENGTH = MAX_UPLOAD_MB * 1024 * 1024
-    ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+    ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "jfif"}
     UPLOAD_FOLDER = str(UPLOAD_DIR)
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = int(os.environ.get("PORT", os.environ.get("FLASK_PORT", 5000)))
@@ -29,8 +29,8 @@ class Config:
     @classmethod
     def get_gemini_model(cls) -> str:
         load_dotenv(ENV_FILE, override=True)
-        model = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash").strip()
-        return model if model else "gemini-3.6-flash"
+        model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash").strip()
+        return model if model else "gemini-3.5-flash"
 
     @classmethod
     def get_gemini_api_key(cls) -> str:
