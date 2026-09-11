@@ -523,6 +523,7 @@
 .canvas-element-text {
   display: inline-block;
   width: 100%;
+  text-align: inherit;
   outline: none;
 }
 
