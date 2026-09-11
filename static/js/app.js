@@ -282,30 +282,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (newDesignBtn) newDesignBtn.style.display = 'inline-flex';
     if (exportDropdownWrapper) exportDropdownWrapper.style.display = 'block';
 
-    // Update status badge
+    // Update status badge (always keep active in Gemini Flash Connected)
     const badgeText = document.getElementById('aiStatusText');
     const badgeEl = document.getElementById('aiStatusBadge');
     if (badgeText && badgeEl) {
-      if (mode === 'gemini') {
-        badgeText.textContent = 'Gemini Flash Reconstructed';
-        badgeEl.className = 'ai-badge badge-live';
-      } else if (mode === 'ocr') {
-        badgeText.textContent = 'OCR Vision Reconstructed';
-        badgeEl.className = 'ai-badge badge-live';
-      } else {
-        badgeText.textContent = 'Design Reconstructed';
-        badgeEl.className = 'ai-badge badge-live';
-      }
+      badgeText.textContent = 'Gemini Flash Connected';
+      badgeEl.className = 'ai-badge badge-live';
     }
 
     editor.loadDesign(design, imageUrl);
-    if (mode === 'gemini') {
-      showToast('✨ Gemini Flash reconstructed your design! Click any text to edit or drag.', 'success');
-    } else if (mode === 'ocr') {
-      showToast('🔍 Layout & typography reconstructed! Click any element to edit or drag.', 'success');
-    } else {
-      showToast('✨ Design loaded! Click any element to edit, customize or drag.', 'success');
-    }
+    showToast('✨ Gemini Flash reconstructed your design! Click any element to edit or drag.', 'success');
   }
 
   // ==========================================================
